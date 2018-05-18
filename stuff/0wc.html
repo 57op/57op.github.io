@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zero-Width Char</title>
+<script>
+document.addEventListener('DOMContentLoaded', e => {
+
+const ZERO_WIDTH_SPACE = '\u200b'
+const ZERO_WIDTH_NONJOINER = '\u200c'
+const form = document.querySelector('#form')
+
+function pad(n, m) {
+	let s = String(n)
+  
+  while (s.length < m) {
+  	s = '0' + s
+  }
+  
+  return s
+}
+
+// https://mathiasbynens.be/notes/javascript-unicode
+const regexAstralSymbols = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g;
+function countSymbols(string) {
+	return string
+		// Replace every surrogate pair with a BMP symbol.
+		.replace(regexAstralSymbols, '_')
+		// …and *then* get the length.
+		.length
+}
+
+function encodeMessage(hiddenMessage, text, paddingSize) {
+  // list of zero-width chars
+  const bits = []
+  
+  for (let ch of hiddenMessage) {
+  	ch = pad(ch.charCodeAt(0).toString(2), paddingSize)
+  
+  	for (const b of ch) {
+      bits.push([ZERO_WIDTH_SPACE, ZERO_WIDTH_NONJOINER][+b])
+    }
+  }
+    
+  // now we have to insert the zero-width chars inside the text
+  const bitsPerChar = Math.ceil(bits.length / countSymbols(text))
+  let encodedText = ''
+  let i = 0
+  
+  for (const ch of text) {
+  	const subBits = bits.slice(i * bitsPerChar, (i + 1) * bitsPerChar)
+    encodedText += ch + subBits.join('')
+  	i++
+  }
+  
+  return encodedText
+}
+
+function decodeMessage(encodedText, paddingSize) {
+	const re = /[\u200b\u200c]/g
+  let m
+  let hiddenMessage = ''
+  
+  while ( (m = re.exec(encodedText)) !== null ) {
+  	hiddenMessage += m[0] === ZERO_WIDTH_SPACE ? '0' : m[0] === ZERO_WIDTH_NONJOINER ? '1' : ''
+  }
+  
+  let i = 0
+  let message = ''
+  
+  while (i < hiddenMessage.length) {
+  	const bits = hiddenMessage.slice(i * paddingSize, (i + 1) * paddingSize)
+    
+    if (bits.length > 0) {
+  		message += String.fromCharCode(parseInt(bits, 2))
+    }
+  
+  	i++
+  }
+  
+  return [message, encodedText.replace(re, '')]
+}
+
+form.addEventListener('submit', e => {
+  // for hidden message, only ASCII is supported at this time
+	const paddingSize = 8
+  const hiddenMessage = form['hidden-message'].value
+  const text = form['text'].value
+  const encodedText = form['encoded-text'].value
+  
+  if (hiddenMessage.length > 0 && text.length > 0) {
+    form['encoded-text'].value = encodeMessage(hiddenMessage, text, paddingSize)
+  } else {
+  	const [hiddenMessage, text] = decodeMessage(encodedText, paddingSize)
+    form['hidden-message'].value = hiddenMessage
+    form.text.value = text
+  }
+
+  e.preventDefault()
+  return false
+})
+
+})
+</script>
+<style>
+html, body {
+	padding: 0;
+    margin: 0 auto;
+    width: 100vw;
+    height: 100vh;
+    text-align: center;
+    overflow: hidden;
+}
+  
+#form textarea {
+	width: 100vw;
+    height: 25vh;
+}
+
+#form div {
+	margin: 1em 0;
+    }
+</style>
+</head>
+<body>
+<form id="form">
+  <div>
+     <textarea name="hidden-message" placeholder="Hidden Message">Hi!</textarea>
+  </div>
+  <div>
+    <textarea name="text" placeholder="Text">Hello Everyone</textarea>
+  </div>
+  <div>
+    <textarea name="encoded-text" placeholder="Encoded Text">H​‌e​​l‌​l​​o​‌ ‌​E‌​v​‌e​​r‌​y​​o​‌ne</textarea>
+  </div>
+  
+  <div>
+    <button type="submit">
+      (De)code
+    </button>  
+  </div>
+</form>
+
+
+
+</body></html>
