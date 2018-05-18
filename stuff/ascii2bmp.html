@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Ascii to BMP</title>
+		<script type="text/javascript">
+// Blob or File
+function readAsBuffer(blob) {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader()
+		reader.readAsArrayBuffer(blob)
+		reader.addEventListener('loadend', () => {
+			resolve(reader.result)
+		})
+	})
+}
+
+// anyway ImageData could be used the very same way to draw on a canavas
+// and generate every in-browser-supported image format
+// by using a lossy image format part of the encoded text will be lost
+// but this is was just an experiment with BMP headers and format (which is lossless)
+class BmpEncoder {
+	constructor(data) {
+		// read data as array of bytes
+		this.blob = new Blob(data, { type: 'application/octet-stream' })
+	}
+	
+	encode() {	
+		return new Promise(async (resolve, reject) => {
+			const inputBytes = new Uint8ClampedArray(await readAsBuffer(this.blob))
+			// a pixel every 4 byte [RGBA]
+			const side = Math.floor( Math.sqrt(inputBytes.length / 4) )
+			const lenInBytes = BmpEncoder.decimalTo4Bytes(side)
+			const header = new Uint8ClampedArray([
+				/* 0L  */ 0x42, 0x4D, // = BM (bfType) word
+				/* 2L  */ 0, 0, 0, 0, // bfSize Dword = 0, not reliable
+				/* 6L  */ 0, 0, 0, 0, // bfReserved Dword
+				/* 10L */ 0x36, 0, 0, 0, // bfOffBits (offset of first byte of the map)
+				/* 14L */ 0x28, 0, 0, 0, // biSize Dword, version 3 = 0x28
+				/* 18L */ ...lenInBytes, // biWidth Dword (px)
+				/* 22L */ ...lenInBytes, // biHeight Dword (px)
+				/* 26L */ 1, 0, // biPlanes always 1 Word
+				/* 28L */ 0x18, 0, // biBitCount (24 bit depth) Word [RGBA]
+				/* 30L */ 0, 0, 0, 0, // biCompression Dword, 0 no compression
+				/* 34L */ 0, 0, 0, 0, // biSizeImage Dword, can be 0 if biCompression is 0
+				/* 38L */ 0, 0, 0, 0, 0, 0, 0, 0, // biXPelsPerMeter Long
+				/* 46L */ 0, 0, 0, 0, 0, 0, 0, 0 // biYPelsPerMeter
+				/* 0x36 */
+			])
+			
+			//const bmpBlob = new Blob([new Uint8ClampedArray([...header, ...inputBytes])], { type: 'image/bmp' })
+			const bmpBytes = new Uint8ClampedArray(header.length + inputBytes.length)
+			bmpBytes.set(header)
+			bmpBytes.set(inputBytes, header.length)
+			
+			resolve(new Blob([bmpBytes], { type: 'image/bmp' }))
+		})
+	}
+	
+	static decimalTo4Bytes(decimal) {
+	// little endian byte order
+		return [
+			decimal & 0xFF,
+			(decimal >> 8) & 0xFF,
+			(decimal >> 16) & 0xFF,
+			(decimal >> 24) & 0xFF
+		]
+	}
+}
+
+class BmpDecoder {
+	constructor(blob) {
+		this.blob = blob
+	}
+	
+	decode() {
+		return new Promise(async (resolve, reject) => {
+			const asciiBytes = new Uint8ClampedArray(await readAsBuffer(this.blob))
+			let text = ''
+			
+			// slice out the header
+			for (const b of asciiBytes.slice(0x36)) {
+				text += String.fromCharCode(b)
+			}
+
+			resolve(text)
+		})
+	}
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+	const content = document.querySelector('#content');
+	const encodeBtn = document.querySelector('#encode');
+	const result = document.querySelector('#result');
+	
+	encodeBtn.addEventListener('click', async () => {
+		const bmpBlob = await new BmpEncoder([...content.value]).encode()
+		result.src = URL.createObjectURL(bmpBlob)
+		// revoke the url once it was loaded
+		// result.addEventListener('load', () => URL.revokeObjectURL(result.src))
+	});
+	
+	const decodeFile = document.querySelector('#decode-file')
+	const decodedCnt = document.querySelector('#decoded-content')
+	
+	const decodeEvent = async b => {
+		decodedCnt.value = await new BmpDecoder(b).decode()
+	}
+	
+	decodeFile.addEventListener('change', e => decodeEvent(e.target.files[0]))
+	
+	document
+		.querySelector('#demo')
+		.addEventListener('click', () => {
+			fetch('the_shining.bmp')
+				.then(res => res.blob())
+				.then(b => decodeEvent(b))
+		})
+});
+
+		</script>
+		<style>
+html, body {
+	padding: 0;
+    margin: 0 auto;
+    width: 90vw;
+    height: 100vh;
+    text-align: center;
+}
+  
+textarea {
+	width: 90vw;
+	height: 15vh;
+}
+
+div {
+	margin: 1em 0;
+}		
+		</style>
+	</head>
+	<body>
+		<fieldset>
+			<legend> Encode </legend>
+			<div>
+				<textarea id="content" placeholder="Some text here..."></textarea>
+			</div>
+			<div>
+				<button type="button" id="encode">Encode</button>
+			</div>
+			<div>
+				<img id="result" alt="BMP image will be shown here">
+			</div>
+		</fieldset>
+		<hr>
+		<fieldset>
+			<legend> Decode </legend>
+			<div>
+				<div id="demo">
+					<div>Demo BMP image (click to decode): </div>
+					<div><img src="the_shining.bmp" alt="demo bmp image"></div>
+				</div>
+			</div>
+			<div>
+				<input type="file" id="decode-file">
+			</div>
+			<div>
+				<textarea id="decoded-content" placeholder="Decoded content will be here..."></textarea>
+			</div>
+		</fieldset>
+	
+</body></html>
