@@ -105,14 +105,16 @@ document.addEventListener('DOMContentLoaded', () => {
 		decodedCnt.value = await new BmpDecoder(b).decode()
 	}
 	
-	decodeFile.addEventListener('change', e => decodeEvent(e.target.files[0]))
+	decodeFile.addEventListener('change', async e => await decodeEvent(e.target.files[0]))
 	
 	document
 		.querySelector('#demo')
-		.addEventListener('click', () => {
-			fetch('the_shining.bmp')
-				.then(res => res.blob())
-				.then(b => decodeEvent(b))
+		.addEventListener('click', async () => {
+			const res = await fetch('the_shining.bmp')
+			const blob = await res.blob()
+			
+			// wait for decodeEvent result as well
+			await decodeEvent(blob)
 		})
 });
 
