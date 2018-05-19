@@ -6,14 +6,8 @@
 		<title>Ascii to BMP</title>
 		<script type="text/javascript">
 // Blob or File
-function readAsBuffer(blob) {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader()
-		reader.readAsArrayBuffer(blob)
-		reader.addEventListener('loadend', () => {
-			resolve(reader.result)
-		})
-	})
+async function readAsBuffer(blob) {
+	return await new Response(blob).arrayBuffer()
 }
 
 // anyway ImageData could be used the very same way to draw on a canavas
