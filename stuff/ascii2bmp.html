@@ -26,36 +26,35 @@ class BmpEncoder {
 		this.blob = new Blob(data, { type: 'application/octet-stream' })
 	}
 	
-	encode() {	
-		return new Promise(async (resolve, reject) => {
-			const inputBytes = new Uint8ClampedArray(await readAsBuffer(this.blob))
-			// a pixel every 4 byte [RGBA]
-			const side = Math.floor( Math.sqrt(inputBytes.length / 4) )
-			const lenInBytes = BmpEncoder.decimalTo4Bytes(side)
-			const header = new Uint8ClampedArray([
-				/* 0L  */ 0x42, 0x4D, // = BM (bfType) word
-				/* 2L  */ 0, 0, 0, 0, // bfSize Dword = 0, not reliable
-				/* 6L  */ 0, 0, 0, 0, // bfReserved Dword
-				/* 10L */ 0x36, 0, 0, 0, // bfOffBits (offset of first byte of the map)
-				/* 14L */ 0x28, 0, 0, 0, // biSize Dword, version 3 = 0x28
-				/* 18L */ ...lenInBytes, // biWidth Dword (px)
-				/* 22L */ ...lenInBytes, // biHeight Dword (px)
-				/* 26L */ 1, 0, // biPlanes always 1 Word
-				/* 28L */ 0x18, 0, // biBitCount (24 bit depth) Word [RGBA]
-				/* 30L */ 0, 0, 0, 0, // biCompression Dword, 0 no compression
-				/* 34L */ 0, 0, 0, 0, // biSizeImage Dword, can be 0 if biCompression is 0
-				/* 38L */ 0, 0, 0, 0, 0, 0, 0, 0, // biXPelsPerMeter Long
-				/* 46L */ 0, 0, 0, 0, 0, 0, 0, 0 // biYPelsPerMeter
-				/* 0x36 */
-			])
-			
-			//const bmpBlob = new Blob([new Uint8ClampedArray([...header, ...inputBytes])], { type: 'image/bmp' })
-			const bmpBytes = new Uint8ClampedArray(header.length + inputBytes.length)
-			bmpBytes.set(header)
-			bmpBytes.set(inputBytes, header.length)
-			
-			resolve(new Blob([bmpBytes], { type: 'image/bmp' }))
-		})
+	async encode() {
+		const inputBytes = new Uint8ClampedArray(await readAsBuffer(this.blob))
+		// a pixel every 4 byte [RGBA]
+		const side = Math.floor( Math.sqrt(inputBytes.length / 4) )
+		const lenInBytes = BmpEncoder.decimalTo4Bytes(side)
+		const header = new Uint8ClampedArray([
+			/* 0L  */ 0x42, 0x4D, // = BM (bfType) word
+			/* 2L  */ 0, 0, 0, 0, // bfSize Dword = 0, not reliable
+			/* 6L  */ 0, 0, 0, 0, // bfReserved Dword
+			/* 10L */ 0x36, 0, 0, 0, // bfOffBits (offset of first byte of the map)
+			/* 14L */ 0x28, 0, 0, 0, // biSize Dword, version 3 = 0x28
+			/* 18L */ ...lenInBytes, // biWidth Dword (px)
+			/* 22L */ ...lenInBytes, // biHeight Dword (px)
+			/* 26L */ 1, 0, // biPlanes always 1 Word
+			/* 28L */ 0x18, 0, // biBitCount (24 bit depth) Word [RGBA]
+			/* 30L */ 0, 0, 0, 0, // biCompression Dword, 0 no compression
+			/* 34L */ 0, 0, 0, 0, // biSizeImage Dword, can be 0 if biCompression is 0
+			/* 38L */ 0, 0, 0, 0, 0, 0, 0, 0, // biXPelsPerMeter Long
+			/* 46L */ 0, 0, 0, 0, 0, 0, 0, 0 // biYPelsPerMeter
+			/* 0x36 */
+		])
+		
+		//const bmpBlob = new Blob([new Uint8ClampedArray([...header, ...inputBytes])], { type: 'image/bmp' })
+		const bmpBytes = new Uint8ClampedArray(header.length + inputBytes.length)
+		bmpBytes.set(header)
+		bmpBytes.set(inputBytes, header.length)
+		
+		return new Blob([bmpBytes], { type: 'image/bmp' })
+
 	}
 	
 	static decimalTo4Bytes(decimal) {
@@ -74,18 +73,16 @@ class BmpDecoder {
 		this.blob = blob
 	}
 	
-	decode() {
-		return new Promise(async (resolve, reject) => {
-			const asciiBytes = new Uint8ClampedArray(await readAsBuffer(this.blob))
-			let text = ''
+	async decode() {
+		const asciiBytes = new Uint8ClampedArray(await readAsBuffer(this.blob))
+		let text = ''
 			
-			// slice out the header
-			for (const b of asciiBytes.slice(0x36)) {
-				text += String.fromCharCode(b)
-			}
+		// slice out the header
+		for (const b of asciiBytes.slice(0x36)) {
+			text += String.fromCharCode(b)
+		}
 
-			resolve(text)
-		})
+		return text
 	}
 }
 
