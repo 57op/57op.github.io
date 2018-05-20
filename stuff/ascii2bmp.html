@@ -23,16 +23,19 @@ class BmpEncoder {
 	async encode() {
 		const inputBytes = new Uint8ClampedArray(await readAsBuffer(this.blob))
 		// a pixel every 4 byte [RGBA]
-		const side = Math.floor( Math.sqrt(inputBytes.length / 4) )
-		const lenInBytes = BmpEncoder.decimalTo4Bytes(side)
+		// const side = Math.floor( Math.sqrt(inputBytes.length / 4) )
+		const sides = BmpEncoder.naiveFactorization(Math.floor(inputBytes.length / 4))
+		
+		const widthInBytes = BmpEncoder.decimalTo4Bytes(sides[0])
+		const heightInBytes = BmpEncoder.decimalTo4Bytes(sides[1])
 		const header = new Uint8ClampedArray([
 			/* 0L  */ 0x42, 0x4D, // = BM (bfType) word
 			/* 2L  */ 0, 0, 0, 0, // bfSize Dword = 0, not reliable
 			/* 6L  */ 0, 0, 0, 0, // bfReserved Dword
 			/* 10L */ 0x36, 0, 0, 0, // bfOffBits (offset of first byte of the map)
 			/* 14L */ 0x28, 0, 0, 0, // biSize Dword, version 3 = 0x28
-			/* 18L */ ...lenInBytes, // biWidth Dword (px)
-			/* 22L */ ...lenInBytes, // biHeight Dword (px)
+			/* 18L */ ...widthInBytes, // biWidth Dword (px)
+			/* 22L */ ...heightInBytes, // biHeight Dword (px)
 			/* 26L */ 1, 0, // biPlanes always 1 Word
 			/* 28L */ 0x18, 0, // biBitCount (24 bit depth) Word [RGBA]
 			/* 30L */ 0, 0, 0, 0, // biCompression Dword, 0 no compression
@@ -41,6 +44,8 @@ class BmpEncoder {
 			/* 46L */ 0, 0, 0, 0, 0, 0, 0, 0 // biYPelsPerMeter
 			/* 0x36 */
 		])
+		
+		console.log(sides)
 		
 		//const bmpBlob = new Blob([new Uint8ClampedArray([...header, ...inputBytes])], { type: 'image/bmp' })
 		const bmpBytes = new Uint8ClampedArray(header.length + inputBytes.length)
@@ -60,6 +65,31 @@ class BmpEncoder {
 			(decimal >> 24) & 0xFF
 		]
 	}
+	
+	// very naive, sorry
+	static naiveFactorization(n) {
+		const factors = []
+		
+		for (let i = 2; i < n / 2; i++) {
+			if (n % i === 0) {
+				factors.push(i)
+			}
+		}
+		
+		let median
+		
+		// it's a prime
+		if (factors.length === 0) {
+			median = Math.floor(Math.sqrt(n))
+		} else {
+			const index = Math.floor(factors.length / 2)
+			//const pseudoIndex = [-1, 0, 1][Math.floor(Math.random() * 3)]
+		
+			median = /*factors[index + pseudoIndex] || */factors[index]
+		}
+		
+		return [Math.floor(n / median), median]
+	}
 }
 
 class BmpDecoder {
@@ -75,7 +105,7 @@ class BmpDecoder {
 		for (const b of asciiBytes.slice(0x36)) {
 			text += String.fromCharCode(b)
 		}
-
+		
 		return text
 	}
 }
