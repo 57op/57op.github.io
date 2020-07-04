@@ -1,0 +1,17 @@
+{
+  "name": "CS:GO Danger Zone Counter",
+  "short_name": "DZ Counter",
+  "description": "Counter Strike: Global Offensive Danger Zone current map",
+  "icons": [
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/dz/",
+  "scope": "/dz/",
+  "display": "fullscreen",
+  "theme_color": "#D5230D",
+  "background_color": "#A51C1C"
+}

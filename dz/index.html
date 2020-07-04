@@ -1,0 +1,196 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Counter Strike: Global Offensive Danger Zone current map">
+    <meta name="author" content="https://github.com/chuck-">
+    <link rel="shortcut icon" href="favicon.ico">
+    <link rel="manifest" href="manifest.json">
+    <title>CS:GO Danger Zone Current Map</title>
+    <style>
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+main {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.child {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#videos {
+  z-index: 0;
+}
+
+.preview {
+  object-fit: cover;
+  display: none;
+  width: 100%;
+  height: 100%;
+}
+
+.preview-playing {
+  display: block;
+}
+
+/*#blur {
+  z-index: 1;
+  backdrop-filter: blur(20px);
+}*/
+
+#overlay {
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+
+  font-size: 16pt;
+  color: #efefef;
+}
+
+#logo {
+  margin: 1.5em 0;
+}
+    </style>
+  </head>
+  <body>
+    <main>
+      <div id="videos" class="child"></div>
+      <!-- <div id="blur" class="child"></div> -->
+      <div id="overlay" class="child">
+        <img id="logo" alt="map logo">
+        <div>
+          🕑 Next Map: <strong id="next-map"></strong> in <strong id="time-left"></strong>
+        </div>
+      </div>
+    </main>
+    <script>
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this page.
+
+Copyright (C) 2020  dovah@tuta.io
+
+The JavaScript code in this page is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this page.
+*/
+    </script>
+    <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service_worker.js', { scope: '/dz/' })
+}
+
+const MAPS = ['blacksite', 'jungle', 'sirocco']
+
+const videos = new Map()
+const logo = document.querySelector('#logo')
+const nextMapLabel = document.querySelector('#next-map')
+const timeLeft = document.querySelector('#time-left')
+let prevMap = null
+
+function sToHuman (s) {
+  const minutes = `${Math.floor(s / 60)}`.padStart(2, '0')
+  const seconds = `${s % 60}`.padStart(2, '0')
+  return `${minutes}:${seconds}`
+}
+
+function createVideoElem (map) {
+  const video = document.createElement('video')
+  video.id = `video-${map}`
+  video.classList.add('preview')
+  video.autoplay = true
+  video.loop = true
+  video.muted = true
+  video.preload = 'none'
+
+  const source = document.createElement('source')
+  source.src = `res/preview/${map}.blur.webm`
+  source.type = 'video/webm'
+
+  video.appendChild(source)
+
+  return video
+}
+
+function currentMap (time) {
+  const ORIGIN_TIMESTAMP = 1593611820800 // GMT+0000
+  const ORIGIN_MAP_INDEX = 0
+  const INTERVAL = 9 * 60 * 1000 // 9 minutes in ms
+
+  const elapsed = time - ORIGIN_TIMESTAMP
+  const progress = elapsed / INTERVAL
+  const map_index = (ORIGIN_MAP_INDEX + (progress | 0)) % MAPS.length
+  const map = MAPS[map_index]
+  const nextMap = MAPS[(map_index + 1) % MAPS.length]
+  const playing = (((progress % 1) * INTERVAL) / 1000) | 0
+
+  return { playing, map, nextMap }
+}
+
+async function counter () {
+  const { playing, map, nextMap } = currentMap(Date.now())
+  const video = videos.get(map)
+
+  if (prevMap !== map) {
+    videos
+      .forEach((video, vMap) => {
+        video.classList.remove('preview-playing')
+      })
+
+    video.classList.add('preview-playing')
+    video.load()
+    video.currentTime = playing % 30 // or find duration in seconds of source
+
+    logo.src = `res/logo/${map}.png`
+
+    nextMapLabel.innerHTML = nextMap.charAt(0).toUpperCase() + nextMap.substring(1)
+  }
+  timeLeft.innerHTML = sToHuman(9 * 60 - playing)
+  prevMap = map
+}
+
+{
+  const videosElem = document.querySelector('#videos')
+
+  for (const map of MAPS) {
+    const video = createVideoElem(map)
+    videos.set(map, video)
+    videosElem.appendChild(video)
+  }
+}
+
+setInterval(counter, 1000)
+counter()
+    </script>
+  </body>
+</html>
