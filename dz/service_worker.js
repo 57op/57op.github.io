@@ -1,13 +1,11 @@
-const cacheName = 'dz-timer-v1'
+const cacheName = 'dz-timer-v2'
 const appShellFiles = [
   './',
   'favicon.ico',
   'icons/icon-512.png',
   'res/logo/blacksite.png',
-  'res/logo/jungle.png',
   'res/logo/sirocco.png',
   'res/preview/blacksite.blur.webm',
-  'res/preview/jungle.blur.webm',
   'res/preview/sirocco.blur.webm',
 ]
 
